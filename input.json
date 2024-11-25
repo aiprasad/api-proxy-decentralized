@@ -1,0 +1,26 @@
+{
+    "proxy_name": "sample-proxy",
+    "base_path": "/sample",
+    "target_endpoint": "https://example.com/api",
+    "policies": [
+      {
+        "type": "quota",
+        "name": "QuotaPolicy",
+        "config": {
+          "allow": "100",
+          "interval": "1",
+          "timeunit": "minute"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "SampleProduct",
+        "description": "A sample API product",
+        "quota_limit": 1000,
+        "quota_interval": 1,
+        "quota_timeunit": "day"
+      }
+    ]
+  }
+  

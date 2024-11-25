@@ -1,0 +1,46 @@
+import json
+import os
+import zipfile
+import sys
+import argparse
+
+def create_proxy_artifact(input_json, output_dir):
+    with open(input_json, 'r') as file:
+        config = json.load(file)
+    
+    proxy_name = config["proxy_name"]
+    target_endpoint = config["target_endpoint"]
+
+    # Create proxy directory
+    proxy_dir = os.path.join(output_dir, proxy_name)
+    os.makedirs(proxy_dir, exist_ok=True)
+
+    # Generate proxy XML files
+    with open(f"{proxy_dir}/proxy.xml", 'w') as proxy_file:
+        proxy_file.write(f"<ProxyEndpoint><Name>{proxy_name}</Name></ProxyEndpoint>")
+    
+    with open(f"{proxy_dir}/target.xml", 'w') as target_file:
+        target_file.write(f"<TargetEndpoint><Name>{proxy_name}</Name><URL>{target_endpoint}</URL></TargetEndpoint>")
+    
+    # Add policies
+    for policy in config.get("policies", []):
+        policy_name = policy["name"]
+        with open(f"{proxy_dir}/{policy_name}.xml", 'w') as policy_file:
+            policy_file.write(f"<Policy><Name>{policy_name}</Name></Policy>")
+    
+    # Create zip bundle
+    zip_path = os.path.join(output_dir, f"{proxy_name}.zip")
+    with zipfile.ZipFile(zip_path, 'w') as proxy_zip:
+        for root, _, files in os.walk(proxy_dir):
+            for file in files:
+                proxy_zip.write(os.path.join(root, file), arcname=os.path.relpath(os.path.join(root, file), proxy_dir))
+    
+    print(f"Proxy artifact created: {zip_path}")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Convert JSON to Apigee proxy")
+    parser.add_argument("--input", required=True, help="Path to the input JSON file")
+    parser.add_argument("--output", required=True, help="Output directory for the proxy artifacts")
+    args = parser.parse_args()
+    
+    create_proxy_artifact(args.input, args.output)

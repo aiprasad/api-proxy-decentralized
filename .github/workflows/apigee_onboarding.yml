@@ -1,0 +1,71 @@
+name: Apigee Proxy Onboarding
+
+on:
+  push:
+    paths:
+      - "input.json"
+      - "terraform/**"
+      - ".github/workflows/apigee_onboarding.yml"
+    branches:
+      - main
+
+jobs:
+  deploy-api-proxy:
+    name: Deploy API Proxy to Apigee
+    runs-on: ubuntu-latest
+
+    env:
+      APIGEE_ORG: "your-apigee-org"
+      APIGEE_ENV: "your-apigee-env"
+      GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+      TF_VAR_apigee_org: ${{ secrets.APIGEE_ORG }}
+      TF_VAR_apigee_env: ${{ secrets.APIGEE_ENV }}
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Python (for JSON to Proxy conversion)
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      # Step 3: Install dependencies for Python script
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r terraform/scripts/requirements.txt
+
+      # Step 4: Convert JSON to Proxy Artifact
+      - name: Convert JSON to Proxy
+        run: |
+          python terraform/scripts/json_to_proxy.py \
+          --input ./input.json \
+          --output ./artifacts
+
+      # Step 5: Set up Terraform
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.7
+
+      # Step 6: Initialize Terraform
+      - name: Terraform Init
+        working-directory: terraform/modules/apigee_onboarding
+        run: terraform init
+
+      # Step 7: Validate Terraform
+      - name: Terraform Validate
+        working-directory: terraform/modules/apigee_onboarding
+        run: terraform validate
+
+      # Step 8: Apply Terraform (deploy proxy to Apigee)
+      - name: Terraform Apply
+        working-directory: terraform/modules/apigee_onboarding
+        run: terraform apply -auto-approve
+
+      # Step 9: Cleanup artifacts
+      - name: Cleanup Artifacts
+        run: rm -rf ./artifacts
